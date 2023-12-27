@@ -1,35 +1,35 @@
-LABEL maintainer="Christoph Schranz <christoph.schranz@salzburgresearch.at>, Mathematical Michael <consistentbayes@gmail.com>"
+LABEL maintainer="Liu <932048437@qq.com>"
 
 # Install Tensorflow, check compatibility here:
 # https://www.tensorflow.org/install/source#gpu
 # installation via conda leads to errors in version 4.8.2
-USER ${NB_UID}
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir tensorflow==2.15.0 keras==2.15.0 && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
+# USER ${NB_UID}
+# RUN pip install --upgrade pip && \
+#     pip install --no-cache-dir tensorflow==2.15.0 keras==2.15.0 && \
+#     fix-permissions "${CONDA_DIR}" && \
+#     fix-permissions "/home/${NB_USER}"
 
-# Install PyTorch with dependencies
-RUN mamba install --quiet --yes \
-    pyyaml setuptools cmake cffi typing && \
-    mamba clean --all -f -y && \
-    fix-permissions "${CONDA_DIR}" && \
-    fix-permissions "/home/${NB_USER}"
+# # Install PyTorch with dependencies
+# RUN mamba install --quiet --yes \
+#     pyyaml setuptools cmake cffi typing && \
+#     mamba clean --all -f -y && \
+#     fix-permissions "${CONDA_DIR}" && \
+#     fix-permissions "/home/${NB_USER}"
 
-# Check compatibility here:
-# https://pytorch.org/get-started/locally/
-# Installation via conda leads to errors installing cudatoolkit=11.1
-# RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0  && \
-#     torchviz==0.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
-RUN set -ex \
- && buildDeps=' \
-    torch==2.1.2 \
-    torchvision==0.16.2 \
-    torchaudio==2.1.2 \
-' \
- && pip install --no-cache-dir $buildDeps \
- && fix-permissions "${CONDA_DIR}" \
- && fix-permissions "/home/${NB_USER}"
+# # Check compatibility here:
+# # https://pytorch.org/get-started/locally/
+# # Installation via conda leads to errors installing cudatoolkit=11.1
+# # RUN pip install --no-cache-dir torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0  && \
+# #     torchviz==0.0.2 --extra-index-url https://download.pytorch.org/whl/cu118
+# RUN set -ex \
+#  && buildDeps=' \
+#     torch==2.1.2 \
+#     torchvision==0.16.2 \
+#     torchaudio==2.1.2 \
+# ' \
+#  && pip install --no-cache-dir $buildDeps \
+#  && fix-permissions "${CONDA_DIR}" \
+#  && fix-permissions "/home/${NB_USER}"
 
 USER root
 ENV CUDA_PATH=/opt/conda/
@@ -41,12 +41,38 @@ RUN apt-get update && \
 
 # reinstall nvcc with cuda-nvcc to install ptax
 USER $NB_UID
-RUN mamba install -c nvidia cuda-nvcc -y && \
-    mamba clean --all -f -y && \
+COPY requirements-tensorflow-cuda.txt requirements-torch-cuda.txt requirements-common.txt ${HOME}/
+RUN conda create -n keras-tf && \
+    source /opt/conda/bin/activate keras-tf && \
+    conda install -c nvidia cuda-nvcc -y && \
+    conda create --name keras-torch --clone keras-tf && \
+    source /opt/conda/bin/activate keras-tf && \
+    pip install --no-cache-dir -r requirements-tensorflow-cuda.txt && \
+    pip install --no-cache-dir --upgrade keras && \
+    pip install --no-cache-dir --upgrade keras-cv && \
+    pip install --no-cache-dir --upgrade keras-nlp && \
+    pip install --no-cache-dir --upgrade keras && \
+    conda install ipykernel -y && \
+    conda clean --all -f -y && \
+    python -m ipykernel install --user --name=keras-tf --display-name="Python (keras-tf)" && \
+    mv "${HOME}/.local/share/jupyter/kernels/keras-tf"* "${CONDA_DIR}/envs/jupyter/share/jupyter/kernels/" && \
+    rm -rf "${HOME}/.local" &&\
+    source /opt/conda/bin/activate keras-torch && \
+    pip install --no-cache-dir -r requirements-torch-cuda.txt && \
+    pip install --no-cache-dir --upgrade keras && \
+    pip install --no-cache-dir --upgrade keras-cv && \
+    pip install --no-cache-dir --upgrade keras-nlp && \
+    pip install --no-cache-dir --upgrade keras && \
+    conda install ipykernel -y && \
+    conda clean --all -f -y && \
+    python -m ipykernel install --user --name=keras-torch --display-name="Python (keras-torch)" && \
+    mv "${HOME}/.local/share/jupyter/kernels/keras-torch"* "${CONDA_DIR}/envs/jupyter/share/jupyter/kernels/" && \
+    rm -rf "${HOME}/.local" &&\
+    rm -f requirements-tensorflow-cuda.txt requirements-torch-cuda.txt requirements-common.txt && \
     fix-permissions $CONDA_DIR && \
     fix-permissions /home/$NB_USER
 
-USER root
-RUN ln -s $CONDA_DIR/bin/ptxas /usr/bin/ptxas
+# USER root
+# RUN ln -s $CONDA_DIR/bin/ptxas /usr/bin/ptxas
 
-USER $NB_UID
+# USER $NB_UID

@@ -1,4 +1,4 @@
 [submodule ".build/docker-stacks"]
 	path = .build/docker-stacks
-	url = https://github.com/jupyter/docker-stacks.git
+	url = https://github.com/ownEyes/docker-stacks.git
 	branch = main
