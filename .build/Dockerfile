@@ -569,10 +569,13 @@ USER root
 ENV CUDA_PATH=/opt/conda/
 
 # Install nvtop to monitor the gpu tasks
+# Install CUDA-specific nvidia libraries and update libcudnn8 before that
 RUN apt-get update && \
     apt-get install -y --no-install-recommends cmake libncurses5-dev libncursesw5-dev git && \
+    apt-get install -y --no-install-recommends  --allow-change-held-packages libcudnn8 && \
+    apt-get install -y --no-install-recommends libnvinfer-dev libnvinfer-plugin-dev  && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-
+RUN cd /usr/lib/x86_64-linux-gnu && ln -s libnvinfer_plugin.so.8 libnvinfer_plugin.so.7 && ln -s libnvinfer.so.8 libnvinfer.so.7
 # reinstall nvcc with cuda-nvcc to install ptax
 USER $NB_UID
 COPY requirements-tensorflow-cuda.txt requirements-torch-cuda.txt requirements-common.txt ${HOME}/
@@ -603,8 +606,8 @@ RUN conda create -n keras-tf && \
     mv "${HOME}/.local/share/jupyter/kernels/keras-torch"* "${CONDA_DIR}/envs/jupyter/share/jupyter/kernels/" && \
     rm -rf "${HOME}/.local" &&\
     rm -f requirements-tensorflow-cuda.txt requirements-torch-cuda.txt requirements-common.txt && \
-    fix-permissions $CONDA_DIR && \
-    fix-permissions /home/$NB_USER
+    fix-permissions ${CONDA_DIR} && \
+    fix-permissions /home/${NB_USER}
 
 # USER root
 # RUN ln -s $CONDA_DIR/bin/ptxas /usr/bin/ptxas
